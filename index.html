@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Dev Studio - AI Office</title>
+    <style>
+        :root {
+            --bg-main: #F8F7F3;
+            --bg-panel: #FFFFFF;
+            --primary: #4A7A64;
+            --text-main: #333333;
+            --border: #E0E0E0;
+        }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Layout ซ้ายขวา */
+        .left-office { flex: 6; position: relative; display: flex; justify-content: center; align-items: center; background-color: #EFECE3; perspective: 1500px; }
+        .right-panel { flex: 4; background-color: var(--bg-panel); padding: 30px; box-shadow: -5px 0 15px rgba(0,0,0,0.05); overflow-y: auto; display: flex; flex-direction: column; gap: 20px; z-index: 10; }
+        
+        /* Isometric Office แบบ CSS (มิติห้อง) */
+        .iso-room { 
+            width: 450px; height: 450px; 
+            transform: rotateX(60deg) rotateZ(-45deg); 
+            transform-style: preserve-3d;
+            background: #E5E0D5; 
+            border: 2px solid #D1CBBF; 
+            position: relative; 
+            box-shadow: 20px 20px 0 rgba(0,0,0,0.05); 
+        }
+        
+        /* กำแพง (ตั้งขึ้น 90 องศา) */
+        .wall-left { position: absolute; width: 450px; height: 150px; background: #F4F1E9; transform-origin: top; transform: rotateX(-90deg); top: 0; left: 0; border: 1px solid #D1CBBF; border-bottom: none; }
+        .wall-right { position: absolute; width: 150px; height: 450px; background: #FAF9F5; transform-origin: right; transform: rotateY(90deg); top: 0; right: 0; border: 1px solid #D1CBBF; border-left: none; }
+        
+        /* โต๊ะทำงาน (มีมิติความหนา) */
+        .desk { 
+            position: absolute; width: 80px; height: 100px; 
+            background: #D4B895; border: 2px solid #B59570; 
+            transform-style: preserve-3d;
+            transform: translateZ(10px);
+            border-radius: 4px; cursor: pointer; transition: 0.2s; 
+        }
+        .desk::before {
+            content: ''; position: absolute; top: -2px; left: -2px;
+            width: 80px; height: 100px; border: 2px solid #A08060;
+            background: #C4A484; transform: translateZ(-10px);
+            box-shadow: -10px 10px 15px rgba(0,0,0,0.15);
+        }
+        .desk:hover { transform: translateZ(15px); }
+        
+        /* ตำแหน่งโต๊ะ */
+        .desk-boss { top: 280px; left: 180px; background: #C4A484; border-color: #8C6A47; }
+        .desk-boss::before { background: #B38E66; }
+        .desk-dev { top: 100px; left: 80px; }
+        .desk-qa { top: 150px; left: 300px; }
+        
+        /* ดีไซน์ตัวละคร */
+        .character { 
+            position: absolute; width: 40px; height: 50px; 
+            background: var(--primary); border-radius: 5px 5px 0 0; 
+            color: white; display: flex; align-items: center; justify-content: center; 
+            font-size: 11px; font-weight: bold; 
+            transform: translateZ(10px) rotateZ(45deg) rotateX(-60deg); 
+            transform-origin: bottom center;
+            top: 25px; left: 20px;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        .qa-char { background: #6B5B95; }
+        .boss-char { background: #D4AF37; color: #222; }
+        
+        /* ป้ายสถานะ */
+        .status-bubble { 
+            position: absolute; background: white; padding: 6px 12px; border-radius: 20px; 
+            font-size: 11px; font-weight: bold; color: #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--border); 
+            display: none; white-space: nowrap; 
+            transform: translateZ(60px) rotateZ(45deg) rotateX(-60deg) translateX(-20px); 
+            transform-origin: bottom center;
+            top: 0; left: 20px;
+        }
+        
+        /* UI Form ขวา */
+        h2 { margin: 0; font-size: 20px; }
+        textarea { width: 100%; height: 120px; padding: 15px; border: 1px solid var(--border); border-radius: 8px; resize: none; font-family: inherit; font-size: 14px; box-sizing: border-box; }
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        .input-group label { font-size: 13px; font-weight: bold; color: #555; }
+        input[type="text"] { padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+        .checkbox-group { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .mode-toggle { display: flex; background: #F0F0F0; border-radius: 8px; overflow: hidden; margin: 10px 0; }
+        .mode-btn { flex: 1; padding: 10px; border: none; background: none; cursor: pointer; font-weight: bold; color: #777; transition: 0.3s; }
+        .mode-btn.active { background: #FFFFFF; color: var(--text-main); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        button.submit-btn { background-color: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button.submit-btn:hover { background-color: #3b6150; }
+        button.stop-btn { background-color: #D9534F; display: none; }
+
+        /* Modal อ่านคำตอบ */
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 100; }
+        .modal-bg { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); z-index: 99; }
+        .modal pre { background: #2D2D2D; color: #CCC; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 13px; max-height: 300px; overflow-y: auto; }
+        .close-btn { background: #EEE; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; float: right; }
+    </style>
+</head>
+<body>
+
+    <!-- ฝั่งซ้าย: โลกออฟฟิศ -->
+    <div class="left-office">
+        <div class="iso-room">
+            <div class="wall-left"></div>
+            <div class="wall-right"></div>
+            
+            <!-- โต๊ะ Boss (คุณณัฐวรรธน์) -->
+            <div class="desk desk-boss" onclick="alert('สวัสดีครับบอส! ทีมงานพร้อมรับคำสั่งครับ 🚀')">
+                <div class="status-bubble" style="display: block; font-size: 11px; color: #555;">กำลังคุมงาน ☕</div>
+                <div class="character boss-char">BOSS</div>
+            </div>
+
+            <!-- โต๊ะ Dev (Claude Code) -->
+            <div class="desk desk-dev" onclick="showResult('claude')">
+                <div class="status-bubble" id="status-claude">รอรับงาน</div>
+                <div class="character">Dev</div>
+            </div>
+
+            <!-- โต๊ะ QA (Antigravity) -->
+            <div class="desk desk-qa" onclick="showResult('antigravity')">
+                <div class="status-bubble" id="status-antigravity">รอรับงาน</div>
+                <div class="character qa-char">QA</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ฝั่งขวา: แผงสั่งงาน -->
+    <div class="right-panel">
+        <h2>✨ วันนี้ให้ทีมช่วยอะไร?</h2>
+        
+        <textarea id="promptInput" placeholder="เช่น ช่วยเขียน API ดึงข้อมูล User ด้วย Node.js หน่อย..."></textarea>
+        
+        <div class="input-group">
+            <label>📂 โฟลเดอร์โปรเจกต์ (จำกัดขอบเขตการเข้าถึง)</label>
+            <input type="text" id="projectPath" placeholder="C:\Users\Name\Projects\MyApp" value="C:\">
+        </div>
+
+        <div>
+            <label style="font-size: 13px; font-weight: bold; color: #555;">ส่งให้ใครบ้าง (เลือกทีละคนตามหน้าที่)</label>
+            <div class="checkbox-group">
+                <label><input type="radio" name="agent" value="claude" checked> 👨‍💻 Dev (Claude Code)</label>
+                <span style="font-size: 12px; color: #4A7A64;">พร้อมเชื่อมต่อ</span>
+            </div>
+            <div class="checkbox-group">
+                <label><input type="radio" name="agent" value="antigravity"> 🕵️‍♂️ QA (Antigravity)</label>
+                <span style="font-size: 12px; color: #4A7A64;">พร้อมเชื่อมต่อ</span>
+            </div>
+        </div>
+
+        <div class="mode-toggle">
+            <button class="mode-btn" id="btn-real" onclick="setMode(false)">ทำงานจริง (Local CLI)</button>
+            <button class="mode-btn active" id="btn-demo" onclick="setMode(true)">ทดลองภาพจำลอง (DEMO)</button>
+        </div>
+
+        <button class="submit-btn" id="submitBtn" onclick="sendTask()">สั่งงานให้ทีม →</button>
+        <button class="submit-btn stop-btn" id="stopBtn" onclick="stopTask()">🛑 ยกเลิกการทำงาน</button>
+    </div>
+
+    <!-- หน้าต่างแสดงผลลัพธ์ -->
+    <div class="modal-bg" id="modalBg" onclick="closeModal()"></div>
+    <div class="modal" id="resultModal">
+        <h3 id="modalTitle" style="margin-top:0;">ผลลัพธ์การทำงาน</h3>
+        <pre id="modalOutput"></pre>
+        <button class="close-btn" onclick="closeModal()">ปิด</button>
+        <button class="close-btn" style="margin-right: 10px; background: var(--primary); color: white;" onclick="copyResult()">คัดลอก</button>
+    </div>
+
+    <script>
+        let isDemoMode = true;
+        let currentTaskId = null;
+        let results = { claude: 'ยังไม่มีงาน', antigravity: 'ยังไม่มีงาน' };
+
+        function setMode(demo) {
+            isDemoMode = demo;
+            document.getElementById('btn-demo').classList.toggle('active', demo);
+            document.getElementById('btn-real').classList.toggle('active', !demo);
+        }
+
+        async function sendTask() {
+            const prompt = document.getElementById('promptInput').value;
+            const projectPath = document.getElementById('projectPath').value;
+            const agent = document.querySelector('input[name="agent"]:checked').value;
+            
+            if (!prompt) return alert('กรุณาพิมพ์คำสั่งก่อนครับบอส');
+
+            // UI State: Running
+            currentTaskId = Date.now().toString();
+            document.getElementById('submitBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'block';
+            
+            const statusBubble = document.getElementById(`status-${agent}`);
+            statusBubble.style.display = 'block';
+            statusBubble.innerText = '⏳ กำลังปั่นงาน...';
+            statusBubble.style.color = '#B8860B';
+
+            try {
+                const response = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentTaskId, agent, prompt, projectPath, isDemo: isDemoMode })
+                });
+                
+                const data = await response.json();
+                results[agent] = data.output;
+                
+                // UI State: Done / Error
+                if (data.status === 'done') {
+                    statusBubble.innerText = '🎉 ได้คำตอบแล้ว!';
+                    statusBubble.style.color = 'green';
+                } else if (data.status === 'needs_setup') {
+                    statusBubble.innerText = '⚠️ ต้องล็อกอินก่อน';
+                    statusBubble.style.color = 'red';
+                } else {
+                    statusBubble.innerText = '❌ เกิดข้อผิดพลาด';
+                    statusBubble.style.color = 'red';
+                }
+            } catch (error) {
+                results[agent] = "หลุดการเชื่อมต่อ: " + error.message;
+                statusBubble.innerText = '❌ ออฟไลน์';
+            } finally {
+                document.getElementById('submitBtn').style.display = 'block';
+                document.getElementById('stopBtn').style.display = 'none';
+                currentTaskId = null;
+            }
+        }
+
+        async function stopTask() {
+            if (!currentTaskId) return;
+            await fetch('/api/stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: currentTaskId })
+            });
+            const agent = document.querySelector('input[name="agent"]:checked').value;
+            document.getElementById(`status-${agent}`).innerText = '🛑 ถูกยกเลิก';
+            document.getElementById('submitBtn').style.display = 'block';
+            document.getElementById('stopBtn').style.display = 'none';
+        }
+
+        function showResult(agent) {
+            document.getElementById('modalTitle').innerText = agent === 'claude' ? 'ผลลัพธ์จาก Dev (Claude)' : 'ผลลัพธ์จาก QA (Antigravity)';
+            document.getElementById('modalOutput').innerText = results[agent];
+            document.getElementById('resultModal').style.display = 'block';
+            document.getElementById('modalBg').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('resultModal').style.display = 'none';
+            document.getElementById('modalBg').style.display = 'none';
+        }
+
+        function copyResult() {
+            navigator.clipboard.writeText(document.getElementById('modalOutput').innerText);
+            alert('คัดลอกลง Clipboard แล้วครับ');
+        }
+    </script>
+</body>
+</html>
